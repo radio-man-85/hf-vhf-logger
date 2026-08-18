@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>HF/VHF Logger & Contest</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: rgba(26,29,41,0.55);
+    --surface: rgba(35,40,55,0.72);
+    --surface2: rgba(48,54,74,0.72);
+    --border: rgba(255,255,255,0.14);
+    --accent: #2dd4a7;
+    --accent2: #4dabf7;
+    --accent3: #ffa94d;
+    --text: #f2f0fb;
+    --text2: #c9c3e6;
+    --danger: #ff6b6b;
+    --success: #51cf66;
+    --warn: #ffca4d;
+    --digi: #d0a8ff;
+    --radius: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: linear-gradient(135deg, #4c1d95 0%, #7e22ce 22%, #c026d3 42%, #db2777 55%, #7c3aed 72%, #3730a3 100%);
+    background-attachment: fixed;
+    background-size: 180% 180%;
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .logo-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .header h1 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+  .header-stats { display: flex; gap: 12px; }
+  .stat-pill {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+  .stat-pill span { color: var(--accent); font-weight: 600; }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 12px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .tab-icon { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.55; transition: opacity 0.2s; }
+  .tab.active .tab-icon, .tab:hover .tab-icon { opacity: 1; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Content */
+  .content { padding: 16px; max-width: 900px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Sub-tabs (à l'intérieur d'un panel) */
+  .subtabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .subtab {
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--text2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .subtab:hover { color: var(--text); }
+  .subtab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+  .subpanel { display: none; }
+  .subpanel.active { display: block; }
+
+  /* Import ADIF/EDI */
+  .import-drop {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.02);
+  }
+  .import-drop:hover, .import-drop.drag {
+    border-color: var(--accent2);
+    background: rgba(77,171,247,0.06);
+  }
+  .import-icon { font-size: 26px; margin-bottom: 8px; color: var(--accent2); }
+  .import-drop p { font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .import-status { margin-top: 12px; font-size: 13px; }
+  .import-preview { margin-top: 4px; }
+  .import-hint { font-size: 11px; color: var(--text2); margin-top: 10px; line-height: 1.6; }
+
+  /* Form */
+  .form-card {
+    background: var(--surface);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .form-card h2 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .form-row { display: grid; gap: 10px; margin-bottom: 10px; }
+  .form-row.col2 { grid-template-columns: 1fr 1fr; }
+  .form-row.col3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row.col4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+  input, select, textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 14px;
+    padding: 8px 10px;
+    width: 100%;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(45,212,167,0.1);
+  }
+  input[id="call"], input[id="c-call"], input[id="calc_my_loc"], input[id="calc_tgt_loc"] {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  input[id="calc_tgt_loc"] {
+    color: var(--accent2);
+  }
+
+  /* Live Beam Info Box */
+  .beam-info-box {
+    background: rgba(0, 184, 255, 0.05);
+    border: 1px dashed rgba(0, 184, 255, 0.3);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    color: var(--text2);
+  }
+  .beam-info-box div span { color: var(--accent2); font-weight: bold; font-size: 16px; }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 18px;
+    border-radius: var(--radius);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .btn:hover { border-color: var(--text2); background: var(--surface); }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: rgba(45,212,167,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-primary:hover { background: rgba(45,212,167,0.18); }
+  .btn-export {
+    background: rgba(77,171,247,0.08);
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+  .btn-export:hover { background: rgba(77,171,247,0.15); }
+  .btn-danger {
+    background: rgba(255,107,107,0.08);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  .btn-danger:hover { background: rgba(255,107,107,0.15); }
+
+  /* Filters */
+  .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .filter-label { font-size: 11px; color: var(--text2); letter-spacing: 1px; text-transform: uppercase; }
+  .search-box {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 10px;
+    transition: border-color 0.2s;
+  }
+  .search-box:focus-within { border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(77,171,247,0.1); }
+  .search-box .search-icon { font-size: 12px; opacity: 0.6; flex-shrink: 0; }
+  .search-box input {
+    border: none;
+    background: transparent;
+    padding: 2px 0;
+    font-size: 12px;
+    width: 170px;
+  }
+  .search-box input:focus { outline: none; box-shadow: none; }
+  .search-box .search-clear {
+    cursor: pointer;
+    color: var(--text2);
+    font-size: 12px;
+    opacity: 0.7;
+    flex-shrink: 0;
+    display: none;
+  }
+  .search-box .search-clear:hover { opacity: 1; color: var(--danger); }
+  .search-box.has-value .search-clear { display: inline; }
+  .filt {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .filt:hover { border-color: var(--text2); color: var(--text); }
+  .filt.active { border-color: var(--accent); color: var(--accent); background: rgba(45,212,167,0.07); }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 600px; }
+  thead th {
+    background: var(--surface2);
+    color: var(--text2);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 9px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid rgba(48,54,61,0.5); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 9px 10px; vertical-align: middle; }
+  .td-call {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .td-date { font-size: 11px; color: var(--text2); font-family: 'Share Tech Mono', monospace; }
+  .td-freq { font-size: 12px; font-family: 'Share Tech Mono', monospace; color: var(--accent2); }
+
+  /* Mode badges */
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .b-usb { background: rgba(77,171,247,0.15); color: var(--accent2); border: 1px solid rgba(77,171,247,0.3); }
+  .b-lsb { background: rgba(77,171,247,0.08); color: #74c0fc; border: 1px solid rgba(77,171,247,0.2); }
+  .b-digi { background: rgba(177,151,252,0.15); color: var(--digi); border: 1px solid rgba(177,151,252,0.3); }
+  .b-cw { background: rgba(255,169,77,0.12); color: var(--accent3); border: 1px solid rgba(255,169,77,0.3); }
+  .b-am { background: rgba(255,202,77,0.12); color: var(--warn); border: 1px solid rgba(255,202,77,0.3); }
+  .b-fm { background: rgba(81,207,102,0.12); color: var(--success); border: 1px solid rgba(81,207,102,0.3); }
+
+  .del-btn {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--text2);
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 3px 7px;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .del-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(255,107,107,0.08); }
+
+  .empty-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--text2);
+  }
+  .empty-state .big { font-size: 36px; margin-bottom: 10px; opacity: 0.3; }
+  .empty-state p { font-size: 13px; }
+
+  /* Stats panel */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .stat-card {
+    background: var(--surface);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-card .val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 28px;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-card .lbl { font-size: 11px; color: var(--text2); letter-spacing: 1px; text-transform: uppercase; }
+  .breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .breakdown-card {
+    background: var(--surface);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .breakdown-card h3 { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text2); margin-bottom: 10px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .bar-label { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text); min-width: 48px; }
+  .bar-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.4s; }
+  .bar-count { font-size: 11px; color: var(--text2); min-width: 20px; text-align: right; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--surface2);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 10px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    box-shadow: 0 0 20px rgba(45,212,167,0.15);
+    display: none;
+    z-index: 999;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+  }
+
+  /* Responsive */
+  @media (max-width: 520px) {
+    .form-row.col3 { grid-template-columns: 1fr 1fr; }
+    .form-row.col4 { grid-template-columns: 1fr 1fr; }
+    .header h1 { font-size: 13px; }
+    .header-stats { display: none; }
+    .breakdown { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-dot"></div>
+    <h1>HF/VHF LOGGER</h1>
+  </div>
+  <div class="header-stats">
+    <div class="stat-pill">QSO: <span id="hdr-total">0</span></div>
+    <div class="stat-pill">DXCC: <span id="hdr-dxcc">0</span></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('log', this)"><svg class="tab-icon" style="color:#ff9f43" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Nouveau QSO</div>
+  <div class="tab" onclick="showTab('journal', this)"><svg class="tab-icon" style="color:#00b8ff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Journal</div>
+  <div class="tab" onclick="showTab('stats', this)"><svg class="tab-icon" style="color:#a371f7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg> Stats</div>
+  <div class="tab" onclick="showTab('beam', this)"><svg class="tab-icon" style="color:#f85149" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Azimut & Beam</div>
+  <div class="tab" onclick="showTab('contest', this)"><svg class="tab-icon" style="color:#d29922" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 5H4a1 1 0 0 0-1 1v1a3 3 0 0 0 3 3"/><path d="M17 5h3a1 1 0 0 1 1 1v1a3 3 0 0 1-3 3"/></svg> Contest</div>
+</div>
+
+<div class="content">
+
+  <div class="panel active" id="panel-log">
+
+    <div class="subtabs">
+      <div class="subtab active" onclick="showSubTab('log','manual', this)">✎ Saisie manuelle</div>
+      <div class="subtab" onclick="showSubTab('log','import', this)">⬆ Importer ADIF / EDI</div>
+    </div>
+
+    <div class="subpanel active" id="subpanel-log-manual">
+    <div class="form-card">
+      <h2>// Nouveau contact</h2>
+      <div class="form-row col2">
+        <div class="form-group">
+          <label>Indicatif</label>
+          <input id="call" type="text" placeholder="F4ABC" autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="form-group">
+          <label>Date / Heure UTC</label>
+          <div style="background: var(--surface2); border: 1px solid var(--border); padding: 8px 10px; border-radius: var(--radius); color: var(--accent); font-family: 'Share Tech Mono', monospace; font-size: 14px;">
+            ⚡ Auto-capture à l'enregistrement (Heure PC)
+          </div>
+        </div>
+      </div>
+      <div class="form-row col3">
+        <div class="form-group">
+          <label>Bande</label>
+          <select id="band" onchange="applyDefaultFrequency()">
+            <optgroup label="── HF ──">
+              <option value="160m">160m</option>
+              <option value="80m">80m</option>
+              <option value="60m">60m</option>
+              <option value="40m">40m</option>
+              <option value="30m">30m</option>
+              <option value="20m">20m</option>
+              <option value="17m">17m</option>
+              <option value="15m">15m</option>
+              <option value="12m">12m</option>
+              <option value="10m" selected>10m</option>
+            </optgroup>
+            <optgroup label="── VHF/UHF ──">
+              <option value="6m">6m</option>
+              <option value="2m">2m</option>
+              <option value="70cm">70cm</option>
+              <option value="23cm">23cm</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fréquence (MHz)</label>
+          <input id="freq" type="number" step="0.001" placeholder="28.000">
+        </div>
+        <div class="form-group">
+          <label>Mode</label>
+          <select id="mode">
+            <optgroup label="── Phonie ──">
+              <option>USB</option><option>LSB</option><option>AM</option><option>FM</option>
+            </optgroup>
+            <optgroup label="── Digital ──">
+              <option>FT8</option><option>FT4</option><option>WSPR</option>
+              <option>PSK31</option><option>JS8</option><option>RTTY</option>
+            </optgroup>
+            <optgroup label="── CW ──">
+              <option>CW</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+      <div class="form-row col4">
+        <div class="form-group">
+          <label>RST Envoyé</label>
+          <input id="rst_sent" type="text" placeholder="59" maxlength="3" value="59">
+        </div>
+        <div class="form-group">
+          <label>RST Reçu</label>
+          <input id="rst_rcvd" type="text" placeholder="59" maxlength="3" value="59">
+        </div>
+        <div class="form-group">
+          <label>Nom</label>
+          <input id="name" type="text" placeholder="Pierre">
+        </div>
+        <div class="form-group">
+          <label>QTH</label>
+          <input id="qth" type="text" placeholder="Paris">
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:14px;">
+        <div class="form-group">
+          <label>Remarques</label>
+          <input id="comment" type="text" placeholder="Conditions, antenne, puissance...">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="addQso()">＋ Ajouter QSO</button>
+        <button class="btn btn-export" onclick="exportAdif()">⬇ Exporter ADIF</button>
+        <button class="btn btn-danger" onclick="clearAll()">✕ Effacer tout</button>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h2>// Derniers QSO</h2>
+      <div id="recent-list"></div>
+    </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-log-import">
+      <div class="form-card">
+        <h2>// Importer un fichier ADIF (.adi / .adif) ou EDI (.edi)</h2>
+        <div class="import-drop" id="dropzone-log"
+             ondragover="event.preventDefault(); this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="handleDrop(event,'log')"
+             onclick="document.getElementById('file-log').click()">
+          <div class="import-icon">⬆</div>
+          <p>Glissez-déposez un fichier .adi / .adif / .edi ici<br>ou cliquez pour le sélectionner</p>
+          <input type="file" id="file-log" accept=".adi,.adif,.edi,.txt" style="display:none" onchange="handleFileSelect(event,'log')">
+        </div>
+        <div id="import-status-log" class="import-status"></div>
+        <div id="import-preview-log" class="import-preview"></div>
+        <div class="import-hint">Les QSO d'un fichier ADIF sont ajoutés directement au journal. Les QSO d'un fichier EDI (contest) sont convertis et ajoutés au journal avec la bande/mode déduits du fichier.</div>
+      </div>
+
+      <div class="form-card">
+        <h2>// Extraire le journal</h2>
+        <div class="btn-row">
+          <button class="btn btn-export" onclick="exportAdif()">⬇ Exporter ADIF (.adi)</button>
+          <button class="btn btn-export" onclick="exportJournalEdi()">⬇ Exporter EDI (.edi)</button>
+        </div>
+        <div class="import-hint">L'export ADIF reprend tout le journal. L'export EDI reprend les QSO actuellement visibles dans l'onglet Journal (filtre/recherche) et nécessite la configuration station renseignée dans l'onglet Contest.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="panel" id="panel-journal">
+    <div class="filter-bar">
+      <span class="filter-label">Filtre :</span>
+      <button class="filt active" onclick="setFilter('all',this)">Tous</button>
+      <button class="filt" onclick="setFilter('HF',this)">HF</button>
+      <button class="filt" onclick="setFilter('VHF',this)">VHF/UHF</button>
+      <button class="filt" onclick="setFilter('USB',this)">USB</button>
+      <button class="filt" onclick="setFilter('LSB',this)">LSB</button>
+      <button class="filt" onclick="setFilter('DIGI',this)">Digital</button>
+      <button class="filt" onclick="setFilter('CW',this)">CW</button>
+      <div class="search-box" id="journal-search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="journal-search" placeholder="Indicatif, nom, QTH, remarque..." oninput="setSearchQuery(this.value)">
+        <span class="search-clear" onclick="clearSearchQuery()">✕</span>
+      </div>
+      <button class="btn btn-danger" style="padding:4px 12px;font-size:12px;" onclick="clearAll()">✕ Effacer tout</button>
+    </div>
+    <div class="btn-row" style="margin-bottom:14px;">
+      <button class="btn btn-export" onclick="exportJournalAdif()">⬇ Exporter ADIF</button>
+      <button class="btn btn-export" onclick="exportJournalEdi()">⬇ Exporter EDI</button>
+      <span style="font-size:11px;color:var(--text2);align-self:center;">Exporte les QSO actuellement affichés (filtre + recherche)</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Indicatif</th>
+            <th>Date UTC</th>
+            <th>Bande</th>
+            <th>Fréq.</th>
+            <th>Mode</th>
+            <th>RST S/R</th>
+            <th>Nom / QTH</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-stats">
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="breakdown" id="breakdown"></div>
+  </div>
+
+  <div class="panel" id="panel-beam">
+    <div class="form-card">
+      <h2>// Calculateur de trajectoire d'Antenne</h2>
+      <div class="form-row col2">
+        <div class="form-group">
+          <label>Mon Locator (Départ)</label>
+          <input id="calc_my_loc" type="text" value="IN96GP" maxlength="8" placeholder="IN96GP" oninput="calculerTrajectoire()">
+        </div>
+        <div class="form-group">
+          <label>Locator Distant (Arrivée)</label>
+          <input id="calc_tgt_loc" type="text" maxlength="8" placeholder="JN08KQ" oninput="calculerTrajectoire()">
+        </div>
+      </div>
+
+      <div class="beam-info-box">
+        <div>Azimut Réel : <span id="beam-az">-</span></div>
+        <div>Direction Cardinale : <span id="beam-dir">-</span></div>
+        <div>Distance Estimée : <span id="beam-dist">-</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-contest">
+
+    <div class="subtabs">
+      <div class="subtab active" onclick="showSubTab('contest','manual', this)">✎ Saisie manuelle</div>
+      <div class="subtab" onclick="showSubTab('contest','import', this)">⬆ Importer ADIF / EDI</div>
+    </div>
+
+    <div class="subpanel active" id="subpanel-contest-manual">
+    <div class="form-card">
+      <h2>// Configuration Station (pour export EDI)</h2>
+      <div class="form-row col3">
+        <div class="form-group">
+          <label>Nom du contest</label>
+          <input id="cfg-tname" type="text" placeholder="Concours d'été">
+        </div>
+        <div class="form-group">
+          <label>Indicatif utilisé</label>
+          <input id="cfg-pcall" type="text" placeholder="F4ENC" style="text-transform:uppercase;">
+        </div>
+        <div class="form-group">
+          <label>Locator (WWL)</label>
+          <input id="cfg-pwwlo" type="text" placeholder="IN96GP" maxlength="8" style="text-transform:uppercase;">
+        </div>
+      </div>
+      <div class="form-row col3">
+        <div class="form-group">
+          <label>Catégorie (Section)</label>
+          <input id="cfg-psect" type="text" placeholder="SINGLE">
+        </div>
+        <div class="form-group">
+          <label>Club (optionnel)</label>
+          <input id="cfg-pclub" type="text" placeholder="">
+        </div>
+        <div class="form-group">
+          <label>Puissance (W)</label>
+          <input id="cfg-spowe" type="text" placeholder="50">
+        </div>
+      </div>
+      <div class="form-row col2">
+        <div class="form-group">
+          <label>Adresse (QTH du contest)</label>
+          <input id="cfg-padr1" type="text" placeholder="114 rue Joseph Bouet">
+        </div>
+        <div class="form-group">
+          <label>Département / Complément</label>
+          <input id="cfg-padr2" type="text" placeholder="85">
+        </div>
+      </div>
+      <div class="form-row col3">
+        <div class="form-group">
+          <label>Nom de l'opérateur</label>
+          <input id="cfg-rname" type="text" placeholder="Vincent Payet">
+        </div>
+        <div class="form-group">
+          <label>Code postal</label>
+          <input id="cfg-rpoco" type="text" placeholder="85000">
+        </div>
+        <div class="form-group">
+          <label>Ville</label>
+          <input id="cfg-rcity" type="text" placeholder="ROCHE SUR YON">
+        </div>
+      </div>
+      <div class="form-row col3">
+        <div class="form-group">
+          <label>Pays</label>
+          <input id="cfg-rcoun" type="text" placeholder="FRANCE" value="FRANCE">
+        </div>
+        <div class="form-group">
+          <label>Téléphone</label>
+          <input id="cfg-rphon" type="text" placeholder="0600000000">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input id="cfg-rhbbs" type="text" placeholder="call@mail.com">
+        </div>
+      </div>
+      <div class="form-row col3">
+        <div class="form-group">
+          <label>Émetteur (TX)</label>
+          <input id="cfg-stxeq" type="text" placeholder="TX 144">
+        </div>
+        <div class="form-group">
+          <label>Récepteur (RX)</label>
+          <input id="cfg-srxeq" type="text" placeholder="RX 144">
+        </div>
+        <div class="form-group">
+          <label>Antenne</label>
+          <input id="cfg-sante" type="text" placeholder="ANT 144">
+        </div>
+      </div>
+      <div class="form-row col2">
+        <div class="form-group">
+          <label>Hauteur antenne / sol (m)</label>
+          <input id="cfg-santh1" type="text" placeholder="25">
+        </div>
+        <div class="form-group">
+          <label>Hauteur / niveau mer (m)</label>
+          <input id="cfg-santh2" type="text" placeholder="120">
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-primary" onclick="saveContestConfig(true)">💾 Enregistrer la configuration</button>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h2>// Gestionnaire de Contest & EDI</h2>
+      <div class="form-row col4">
+        <div class="form-group">
+          <label>Bande</label>
+          <select id="c-band">
+            <option value="144MHz">144 MHz</option>
+            <option value="432MHz">432 MHz</option>
+            <option value="1.3GHz">1.3 GHz</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Mode</label>
+          <select id="c-mode">
+            <option value="1">SSB</option>
+            <option value="2">CW</option>
+            <option value="6">FM</option>
+            <option value="5">AM</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Indicatif Corresp.</label>
+          <input id="c-call" type="text" placeholder="F6KJS">
+        </div>
+        <div class="form-group">
+          <label>Locator</label>
+          <input id="c-loc" type="text" placeholder="JN08OO" maxlength="6">
+        </div>
+      </div>
+      <div class="form-row col2">
+        <div class="form-group">
+          <label>N° QSO Envoyé (Auto)</label>
+          <input id="c-qso-out" type="text" readonly style="color:var(--accent); font-family:'Share Tech Mono',monospace;">
+        </div>
+        <div class="form-group">
+          <label>N° QSO Reçu</label>
+          <input id="c-qso-in" type="text" placeholder="001">
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top: 10px;">
+        <button class="btn btn-primary" onclick="addContestQso()">＋ Enregistrer QSO Contest</button>
+        <button class="btn btn-export" onclick="exportEdi()">⬇ Exporter EDI</button>
+        <button class="btn btn-danger" onclick="clearContest()">✕ Vider Contest</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>N° S</th>
+            <th>Date / UTC</th>
+            <th>Bande</th>
+            <th>Indicatif</th>
+            <th>Sent (S/N)</th>
+            <th>Rcvd (S/N)</th>
+            <th>Locator</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="contest-body"></tbody>
+      </table>
+    </div>
+    </div>
+
+    <div class="subpanel" id="subpanel-contest-import">
+      <div class="form-card">
+        <h2>// Importer un fichier ADIF (.adi / .adif) ou EDI (.edi)</h2>
+        <div class="import-drop" id="dropzone-contest"
+             ondragover="event.preventDefault(); this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="handleDrop(event,'contest')"
+             onclick="document.getElementById('file-contest').click()">
+          <div class="import-icon">⬆</div>
+          <p>Glissez-déposez un fichier .adi / .adif / .edi ici<br>ou cliquez pour le sélectionner</p>
+          <input type="file" id="file-contest" accept=".adi,.adif,.edi,.txt" style="display:none" onchange="handleFileSelect(event,'contest')">
+        </div>
+        <div id="import-status-contest" class="import-status"></div>
+        <div id="import-preview-contest" class="import-preview"></div>
+        <div class="import-hint">Les QSO d'un fichier EDI sont ajoutés au log contest (bande/mode déduits du fichier) et recopiés dans le journal. Les QSO d'un fichier ADIF sont convertis en QSO contest (n° S/N auto, locator = GRIDSQUARE si présent).</div>
+      </div>
+
+      <div class="form-card">
+        <h2>// Extraire le concours</h2>
+        <div class="btn-row">
+          <button class="btn btn-export" onclick="exportEdi()">⬇ Exporter EDI (.edi)</button>
+          <button class="btn btn-export" onclick="exportAdif()">⬇ Exporter ADIF (.adi)</button>
+        </div>
+        <div class="import-hint">L'export EDI reprend uniquement les QSO du log contest (score REG1TEST). L'export ADIF reprend tout le journal, y compris les QSO de contest recopiés automatiquement.</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const DIGI = ['FT8','FT4','WSPR','PSK31','JS8','RTTY'];
+const VHF_BANDS = ['6m','2m','70cm','23cm','144MHz','432MHz','1.3GHz'];
+
+// Base de données des fréquences par défaut (MHz)
+const DEFAULT_FREQS = {
+  '160m': '1.800', '80m': '3.500', '60m': '5.351', '40m': '7.000',
+  '30m': '10.100', '20m': '14.000', '17m': '18.068', '15m': '21.000',
+  '12m': '24.890', '10m': '28.000', '6m': '50.000', '2m': '144.000',
+  '70cm': '430.000', '23cm': '1296.000',
+  '144MHz': '144.000', '432MHz': '430.000', '1.3GHz': '1296.000'
+};
+
+// Correspondance bande interne -> libellé PBand officiel REG1TEST
+const PBAND_MAP = {
+  '6m': '50 MHz', '2m': '144 MHz', '70cm': '432 MHz', '23cm': '1,3 GHz',
+  '144MHz': '144 MHz', '432MHz': '432 MHz', '1.3GHz': '1,3 GHz'
+};
+const CONTEST_CFG_FIELDS = [
+  'cfg-tname','cfg-pcall','cfg-pwwlo','cfg-psect','cfg-pclub','cfg-spowe',
+  'cfg-padr1','cfg-padr2','cfg-rname','cfg-rpoco','cfg-rcity','cfg-rcoun',
+  'cfg-rphon','cfg-rhbbs','cfg-stxeq','cfg-srxeq','cfg-sante','cfg-santh1','cfg-santh2'
+];
+
+let qsos = [];
+let contestQsos = [];
+let activeFilter = 'all';
+let searchQuery = '';
+
+function load() {
+  try { qsos = JSON.parse(localStorage.getItem('hfvhf_qsos') || '[]'); } catch(e) { qsos = []; }
+  try { contestQsos = JSON.parse(localStorage.getItem('hfvhf_contest') || '[]'); } catch(e) { contestQsos = []; }
+  applyDefaultFrequency();
+  updateContestSerial();
+  loadContestConfig();
+}
+function save() {
+  try { localStorage.setItem('hfvhf_qsos', JSON.stringify(qsos)); } catch(e) {}
+  try { localStorage.setItem('hfvhf_contest', JSON.stringify(contestQsos)); } catch(e) {}
+}
+
+function loadContestConfig() {
+  let cfg = {};
+  try { cfg = JSON.parse(localStorage.getItem('hfvhf_contest_cfg') || '{}'); } catch(e) { cfg = {}; }
+  CONTEST_CFG_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && cfg[id] !== undefined) el.value = cfg[id];
+  });
+}
+
+function saveContestConfig(notify) {
+  const cfg = {};
+  CONTEST_CFG_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) cfg[id] = el.value.trim();
+  });
+  try { localStorage.setItem('hfvhf_contest_cfg', JSON.stringify(cfg)); } catch(e) {}
+  if (notify) showToast('Configuration station enregistrée ✓');
+}
+
+function applyDefaultFrequency() {
+  const currentBand = document.getElementById('band').value;
+  if (DEFAULT_FREQS[currentBand]) {
+    document.getElementById('freq').value = DEFAULT_FREQS[currentBand];
+    document.getElementById('freq').placeholder = DEFAULT_FREQS[currentBand];
+  }
+}
+
+function nowUtc() {
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+}
+
+function addQso() {
+  const call = document.getElementById('call').value.trim().toUpperCase();
+  if (!call) { showToast('! Entrez un indicatif'); return; }
+  
+  const q = {
+    id: Date.now(),
+    call,
+    datetime: nowUtc(),
+    band: document.getElementById('band').value,
+    freq: document.getElementById('freq').value || '',
+    mode: document.getElementById('mode').value,
+    rst_sent: document.getElementById('rst_sent').value || '59',
+    rst_rcvd: document.getElementById('rst_rcvd').value || '59',
+    name: document.getElementById('name').value.trim(),
+    qth: document.getElementById('qth').value.trim(),
+    comment: document.getElementById('comment').value.trim()
+  };
+  
+  qsos.unshift(q);
+  save();
+  
+  ['call','name','qth','comment'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('rst_sent').value = '59';
+  document.getElementById('rst_rcvd').value = '59';
+  applyDefaultFrequency();
+  
+  renderAll();
+  showToast('QSO ' + call + ' enregistré ✓');
+}
+
+function deleteQso(id) {
+  qsos = qsos.filter(q => q.id !== id);
+  save(); renderAll();
+}
+
+function clearAll() {
+  if (!qsos.length) return;
+  if (confirm('Effacer les ' + qsos.length + ' QSO du journal ?')) {
+    qsos = []; save(); renderAll();
+  }
+}
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLog();
+}
+
+function setSearchQuery(v) {
+  searchQuery = v.trim().toLowerCase();
+  const box = document.getElementById('journal-search-box');
+  if (box) box.classList.toggle('has-value', searchQuery.length > 0);
+  renderLog();
+}
+
+function clearSearchQuery() {
+  searchQuery = '';
+  const input = document.getElementById('journal-search');
+  if (input) input.value = '';
+  const box = document.getElementById('journal-search-box');
+  if (box) box.classList.remove('has-value');
+  renderLog();
+}
+
+function badgeClass(mode) {
+  if (mode === 'USB') return 'b-usb';
+  if (mode === 'LSB') return 'b-lsb';
+  if (DIGI.includes(mode)) return 'b-digi';
+  if (mode === 'CW') return 'b-cw';
+  if (mode === 'AM') return 'b-am';
+  if (mode === 'FM') return 'b-fm';
+  return 'b-usb';
+}
+
+function filterList() {
+  return qsos.filter(q => {
+    if (activeFilter === 'HF' && VHF_BANDS.includes(q.band)) return false;
+    if (activeFilter === 'VHF' && !VHF_BANDS.includes(q.band)) return false;
+    if (activeFilter === 'DIGI' && !DIGI.includes(q.mode)) return false;
+    if (!['all','HF','VHF','DIGI'].includes(activeFilter) && q.mode !== activeFilter) return false;
+
+    if (searchQuery) {
+      const haystack = [q.call, q.name, q.qth, q.comment, q.band, q.freq, q.mode]
+        .filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(searchQuery)) return false;
+    }
+    return true;
+  });
+}
+
+function renderLog() {
+  const list = filterList();
+  const tbody = document.getElementById('log-body');
+  if (!list.length) {
+    const reason = searchQuery ? ' pour cette recherche' : (activeFilter !== 'all' ? ' pour ce filtre' : '');
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="big">📻</div><p>Aucun QSO${reason}</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(q => {
+    const dt = (q.datetime || '').replace('T',' ').slice(0,16);
+    const nq = q.name && q.qth ? q.name + ' / ' + q.qth : (q.name || q.qth || '-');
+    return `<tr>
+      <td class="td-call">${q.call}</td>
+      <td class="td-date">${dt}</td>
+      <td>${q.band}</td>
+      <td class="td-freq">${q.freq ? q.freq : '-'}</td>
+      <td><span class="badge ${badgeClass(q.mode)}">${q.mode}</span></td>
+      <td style="font-family:'Share Tech Mono',monospace;font-size:12px;">${q.rst_sent}/${q.rst_rcvd}</td>
+      <td style="font-size:12px;color:var(--text2);">${nq}</td>
+      <td><button class="del-btn" onclick="deleteQso(${q.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRecent() {
+  const el = document.getElementById('recent-list');
+  const last = qsos.slice(0, 5);
+  if (!last.length) {
+    el.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:10px 0;">Aucun QSO enregistré</div>';
+    return;
+  }
+  el.innerHTML = last.map(q => {
+    const dt = (q.datetime || '').replace('T',' ').slice(0,16);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--accent);min-width:90px;">${q.call}</span>
+      <span class="badge ${badgeClass(q.mode)}">${q.mode}</span>
+      <span style="font-size:12px;color:var(--accent2);">${q.band}</span>
+      <span style="font-size:11px;color:var(--text2);margin-left:auto;">${dt}</span>
+      <button class="del-btn" onclick="deleteQso(${q.id})" title="Supprimer">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function renderStats() {
+  const total = qsos.length;
+  const calls = new Set(qsos.map(q => q.call));
+  const pfxSet = new Set(qsos.map(q => q.call.replace(/[0-9].*/, '')));
+  const hf = qsos.filter(q => !VHF_BANDS.includes(q.band)).length;
+  const vhf = qsos.filter(q => VHF_BANDS.includes(q.band)).length;
+  const digi = qsos.filter(q => DIGI.includes(q.mode)).length;
+
+  document.getElementById('stats-grid').innerHTML = [
+    ['Total QSO', total, 'var(--accent)'],
+    ['Indicatifs uniques', calls.size, 'var(--accent2)'],
+    ['Préfixes DXCC', pfxSet.size, 'var(--digi)'],
+    ['HF', hf, 'var(--warn)'],
+    ['VHF/UHF', vhf, 'var(--success)'],
+    ['Digital', digi, 'var(--accent3)'],
+  ].map(([l,v,c]) => `<div class="stat-card">
+    <div class="val" style="color:${c}">${v}</div>
+    <div class="lbl">${l}</div>
+  </div>`).join('');
+
+  const bandCounts = {};
+  qsos.forEach(q => { bandCounts[q.band] = (bandCounts[q.band]||0)+1; });
+  const sortedBands = Object.entries(bandCounts).sort((a,b) => b[1]-a[1]).slice(0,8);
+  const maxB = sortedBands[0]?.[1] || 1;
+
+  const modeCounts = {};
+  qsos.forEach(q => { modeCounts[q.mode] = (modeCounts[q.mode]||0)+1; });
+  const sortedModes = Object.entries(modeCounts).sort((a,b) => b[1]-a[1]).slice(0,8);
+  const maxM = sortedModes[0]?.[1] || 1;
+
+  document.getElementById('breakdown').innerHTML = `
+    <div class="breakdown-card">
+      <h3>Par bande</h3>
+      ${sortedBands.map(([b,c]) => `<div class="bar-row">
+        <span class="bar-label">${b}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(c/maxB*100)}%;background:var(--accent2)"></div></div>
+        <span class="bar-count">${c}</span>
+      </div>`).join('') || '<span style="color:var(--text2);font-size:12px;">Aucune donnée</span>'}
+    </div>
+    <div class="breakdown-card">
+      <h3>Par mode</h3>
+      ${sortedModes.map(([m,c]) => `<div class="bar-row">
+        <span class="bar-label">${m}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(c/maxM*100)}%;background:var(--digi)"></div></div>
+        <span class="bar-count">${c}</span>
+      </div>`).join('') || '<span style="color:var(--text2);font-size:12px;">Aucune donnée</span>'}
+    </div>`;
+}
+
+function renderHeader() {
+  document.getElementById('hdr-total').textContent = qsos.length;
+  const pfx = new Set(qsos.map(q => q.call.replace(/[0-9].*/,'')));
+  document.getElementById('hdr-dxcc').textContent = pfx.size;
+}
+
+function renderAll() {
+  renderHeader(); renderRecent(); renderLog(); renderStats(); renderContest();
+}
+
+function showTab(t, element) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  
+  document.getElementById('panel-' + t).classList.add('active');
+  element.classList.add('active');
+  
+  if (t === 'stats') renderStats();
+}
+
+function showSubTab(panel, sub, element) {
+  document.querySelectorAll('#panel-' + panel + ' .subpanel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#panel-' + panel + ' .subtab').forEach(b => b.classList.remove('active'));
+  document.getElementById('subpanel-' + panel + '-' + sub).classList.add('active');
+  element.classList.add('active');
+}
+
+// --- CONTEST MODULE ---
+function updateContestSerial() {
+  const nextSerial = String(contestQsos.length + 1).padStart(3, '0');
+  document.getElementById('c-qso-out').value = nextSerial;
+}
+
+function addContestQso() {
+  const call = document.getElementById('c-call').value.trim().toUpperCase();
+  const loc = document.getElementById('c-loc').value.trim().toUpperCase();
+  const rcvd = document.getElementById('c-qso-in').value.trim();
+
+  if (!call || !loc || !rcvd) {
+    showToast('! Remplissez l\'indicatif, le locator et le n° reçu');
+    return;
+  }
+
+  const q = {
+    id: Date.now(),
+    datetime: nowUtc(),
+    band: document.getElementById('c-band').value,
+    mode: document.getElementById('c-mode').value,
+    call,
+    sent: document.getElementById('c-qso-out').value,
+    rcvd: rcvd,
+    loc
+  };
+
+  contestQsos.push(q);
+
+  // Enregistre aussi le QSO dans le journal principal
+  const modeLabel = { '1':'USB', '2':'CW', '5':'AM', '6':'FM' }[q.mode] || 'USB';
+  qsos.unshift({
+    id: q.id + 1, // évite toute collision d'id avec le QSO contest
+    call,
+    datetime: q.datetime,
+    band: q.band,
+    freq: DEFAULT_FREQS[q.band] || '',
+    mode: modeLabel,
+    rst_sent: '59',
+    rst_rcvd: '59',
+    name: '',
+    qth: loc,
+    comment: 'Contest — S/N ' + q.sent + ' / R/N ' + rcvd
+  });
+
+  save();
+  updateContestSerial();
+
+  document.getElementById('c-call').value = '';
+  document.getElementById('c-loc').value = '';
+  document.getElementById('c-qso-in').value = '';
+
+  renderAll();
+  showToast('QSO Contest enregistré ✓');
+}
+
+function deleteContestQso(id) {
+  contestQsos = contestQsos.filter(q => q.id !== id);
+  qsos = qsos.filter(q => q.id !== id + 1); // retire aussi la copie liée dans le journal
+  save();
+  updateContestSerial();
+  renderAll();
+}
+
+function clearContest() {
+  if (!contestQsos.length) return;
+  if (confirm('Effacer tous les QSO du contest ?')) {
+    contestQsos = [];
+    save();
+    updateContestSerial();
+    renderContest();
+  }
+}
+
+function renderContest() {
+  const tbody = document.getElementById('contest-body');
+  if (!contestQsos.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="big">🏆</div><p>Aucun QSO de contest enregistré</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = contestQsos.map((q, idx) => {
+    const dt = (q.datetime || '').replace('T',' ').slice(0,16);
+    return `<tr>
+      <td style="font-family:'Share Tech Mono',monospace; color:var(--accent);">${String(idx + 1).padStart(3, '0')}</td>
+      <td class="td-date">${dt}</td>
+      <td>${q.band}</td>
+      <td class="td-call">${q.call}</td>
+      <td style="font-family:'Share Tech Mono',monospace;">${q.sent}</td>
+      <td style="font-family:'Share Tech Mono',monospace;">${q.rcvd}</td>
+      <td style="font-family:'Share Tech Mono',monospace; color:var(--accent2);">${q.loc}</td>
+      <td><button class="del-btn" onclick="deleteContestQso(${q.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function exportEdi() {
+  if (!contestQsos.length) { showToast('! Aucun QSO contest à exporter'); return; }
+
+  saveContestConfig(false);
+  const g = id => (document.getElementById(id).value || '').trim();
+
+  const myLoc = (g('cfg-pwwlo') || 'AA00AA').toUpperCase();
+  const myCoord = maidenheadToLatLon(myLoc);
+  if (!myCoord) { showToast('! Locator station (config) invalide'); return; }
+
+  // Bande principale = bande la plus utilisée dans le log contest
+  const bandTally = {};
+  contestQsos.forEach(q => { bandTally[q.band] = (bandTally[q.band]||0)+1; });
+  const mainBand = Object.entries(bandTally).sort((a,b)=>b[1]-a[1])[0][0];
+  const pBand = PBAND_MAP[mainBand] || mainBand;
+
+  // Dates de début/fin du contest (déduites des QSO)
+  const dates = contestQsos.map(q => q.datetime.slice(0,10).replace(/-/g,''));
+  const tDateStart = dates.reduce((a,b) => a < b ? a : b);
+  const tDateEnd = dates.reduce((a,b) => a > b ? a : b);
+
+  // Calcul des points (distance km) et des multiplicateurs (nouveaux locators 4 car.)
+  const seenSquares = new Set();
+  let totalPoints = 0;
+  let bestDx = null;
+
+  const qsoLines = contestQsos.map(q => {
+    const d = q.datetime.slice(0,10).replace(/-/g,'').slice(2); // YYMMDD
+    const t = q.datetime.slice(11,16).replace(':','');
+    const loc = q.loc.toUpperCase();
+    const coord = maidenheadToLatLon(loc);
+    const dist = coord ? Math.round(calcDistance(myCoord.lat, myCoord.lon, coord.lat, coord.lon)) : 0;
+    totalPoints += dist;
+
+    const square = loc.slice(0,4);
+    let newWwl = '';
+    if (square && !seenSquares.has(square)) {
+      seenSquares.add(square);
+      newWwl = 'N';
+    }
+
+    if (!bestDx || dist > bestDx.dist) bestDx = { call: q.call, loc, dist };
+
+    const mode = q.mode || '1';
+    return `${d};${t};${q.call};${mode};59;${q.sent};59;${q.rcvd};;${loc};${dist};;${newWwl};;`;
+  });
+
+  const wwlCount = seenSquares.size;
+  const totalScore = totalPoints * (wwlCount || 1);
+
+  const header = [
+    '[REG1TEST;1]',
+    `TName=${g('cfg-tname')}`,
+    `TDate=${tDateStart};${tDateEnd}`,
+    `PCall=${g('cfg-pcall').toUpperCase()}`,
+    `PWWLo=${myLoc}`,
+    `PExch=`,
+    `PAdr1=${g('cfg-padr1')}`,
+    `PAdr2=${g('cfg-padr2')}`,
+    `PSect=${g('cfg-psect') || 'SINGLE'}`,
+    `PBand=${pBand}`,
+    `PClub=${g('cfg-pclub')}`,
+    `RName=${g('cfg-rname')}`,
+    `RCall=${g('cfg-pcall').toUpperCase()}`,
+    `RAdr1=${g('cfg-padr1')}`,
+    `RAdr2=`,
+    `RPoCo=${g('cfg-rpoco')}`,
+    `RCity=${g('cfg-rcity')}`,
+    `RCoun=${g('cfg-rcoun') || 'FRANCE'}`,
+    `RPhon=${g('cfg-rphon')}`,
+    `RHBBS= ${g('cfg-rhbbs')}`,
+    `MOpe1=`,
+    `STXEq=${g('cfg-stxeq')}`,
+    `SPowe=${g('cfg-spowe')}`,
+    `SRXEq=${g('cfg-srxeq')}`,
+    `SAnte=${g('cfg-sante')}`,
+    `SAntH=${g('cfg-santh1')};${g('cfg-santh2')}`,
+    `CQSOs=${contestQsos.length};1`,
+    `CQSOP=${totalPoints}`,
+    `CWWLs=${wwlCount};0;1`,
+    `CWWLB=`,
+    `CExcs=`,
+    `CExcB=`,
+    `CDXCs=`,
+    `CDXCB=`,
+    `CToSc=${totalScore}`,
+    `CODXC=${bestDx ? bestDx.call + ';' + bestDx.loc + ';' + bestDx.dist : ''}`,
+    '[Remarks]',
+    'Généré par HF/VHF Logger',
+    `[QSORecords;${contestQsos.length}]`
+  ].join('\r\n');
+
+  const edi = header + '\r\n' + qsoLines.join('\r\n') + '\r\n';
+
+  const blob = new Blob([edi], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'contest_' + new Date().toISOString().slice(0,10) + '.edi';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast(contestQsos.length + ' QSO exportés → .edi (score: ' + totalScore + ')');
+}
+
+// --- ENGINE MAIDENHEAD (AZIMUT ET GEOGRAPHIE) ---
+function maidenheadToLatLon(locator) {
+  const loc = locator.trim().toUpperCase();
+  const regex = /^[A-X]{2}[0-9]{2}([A-X]{2}([0-9]{2})?)?$/;
+  if (!regex.test(loc)) return null;
+
+  let lon = (loc.charCodeAt(0) - 65) * 20.0 - 180.0;
+  let lat = (loc.charCodeAt(1) - 65) * 10.0 - 90.0;
+  let lon_step = 20.0, lat_step = 10.0;
+
+  lon_step /= 10; lat_step /= 10;
+  lon += (loc.charCodeAt(2) - 48) * lon_step;
+  lat += (loc.charCodeAt(3) - 48) * lat_step;
+
+  if (loc.length >= 6) {
+    lon_step /= 24; lat_step /= 24;
+    lon += (loc.charCodeAt(4) - 65) * lon_step;
+    lat += (loc.charCodeAt(5) - 65) * lat_step;
+  }
+  if (loc.length === 8) {
+    lon_step /= 10; lat_step /= 10;
+    lon += (loc.charCodeAt(6) - 48) * lon_step;
+    lat += (loc.charCodeAt(7) - 48) * lat_step;
+  }
+
+  lon += lon_step / 2.0;
+  lat += lat_step / 2.0;
+  return { lat, lon };
+}
+
+function calcAzimut(lat1, lon1, lat2, lon2) {
+  const rLat1 = lat1 * Math.PI / 180;
+  const rLat2 = lat2 * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+
+  const x = Math.sin(dLon) * Math.cos(rLat2);
+  const y = Math.cos(rLat1) * Math.sin(rLat2) - Math.sin(rLat1) * Math.cos(rLat2) * Math.cos(dLon);
+  const az = Math.atan2(x, y) * 180 / Math.PI;
+  return (az + 360) % 360;
+}
+
+function calcDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371.0;
+  const rLat1 = lat1 * Math.PI / 180;
+  const rLat2 = lat2 * Math.PI / 180;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(rLat1) * Math.cos(rLat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+function azimutToDirection(az) {
+  const dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSO", "SO", "OSO", "O", "ONO", "NO", "NNO"];
+  return dirs[Math.round(az / 22.5) % 16];
+}
+
+function calculerTrajectoire() {
+  const myLoc = document.getElementById('calc_my_loc').value;
+  const tgtLoc = document.getElementById('calc_tgt_loc').value;
+  
+  const coord1 = maidenheadToLatLon(myLoc);
+  const coord2 = maidenheadToLatLon(tgtLoc);
+
+  if (!coord1 || !coord2) {
+    document.getElementById('beam-az').textContent = "-";
+    document.getElementById('beam-dir').textContent = "-";
+    document.getElementById('beam-dist').textContent = "-";
+    return;
+  }
+
+  const az = calcAzimut(coord1.lat, coord1.lon, coord2.lat, coord2.lon);
+  const dist = calcDistance(coord1.lat, coord1.lon, coord2.lat, coord2.lon);
+  const dir = azimutToDirection(az);
+
+  document.getElementById('beam-az').textContent = az.toFixed(1) + "°";
+  document.getElementById('beam-dir').textContent = dir;
+  document.getElementById('beam-dist').textContent = dist.toFixed(1) + " km";
+}
+
+function exportAdif() {
+  if (!qsos.length) { showToast('! Aucun QSO à exporter'); return; }
+  let adif = 'ADIF Export\n<ADIF_VER:5>3.1.4\n<PROGRAMID:12>HF-VHF-Logger\n<EOH>\n\n';
+  qsos.forEach(q => {
+    const raw = (q.datetime||'').replace('T','').replace(/-/g,'').replace(/:/g,'');
+    const dateStr = raw.slice(0,8) || '19700101';
+    const timeStr = raw.slice(8,12) || '0000';
+    const f = (tag, val) => val ? `<${tag}:${val.length}>${val} ` : '';
+    adif += f('CALL', q.call);
+    adif += f('QSO_DATE', dateStr);
+    adif += f('TIME_ON', timeStr);
+    adif += f('BAND', q.band);
+    adif += f('FREQ', q.freq);
+    adif += f('MODE', q.mode);
+    adif += f('RST_SENT', q.rst_sent);
+    adif += f('RST_RCVD', q.rst_rcvd);
+    adif += f('NAME', q.name);
+    adif += f('QTH', q.qth);
+    adif += f('COMMENT', q.comment);
+    adif += '<EOR>\n';
+  });
+  const blob = new Blob([adif], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'log_' + new Date().toISOString().slice(0,10) + '.adi';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast(qsos.length + ' QSO exportés → .adi');
+}
+
+// --- EXPORT DEPUIS LE JOURNAL (liste filtrée / recherche) ---
+function downloadTextFile(content, filename) {
+  const blob = new Blob([content], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function extractLocatorFromText(str) {
+  if (!str) return '';
+  const m = str.toUpperCase().match(/\b[A-R]{2}[0-9]{2}([A-X]{2})?\b/);
+  return m ? m[0] : '';
+}
+
+function extractSerialFromComment(comment, key) {
+  if (!comment) return '';
+  const re = new RegExp(key.replace('/', '\\/') + '\\s*(\\d+)', 'i');
+  const m = comment.match(re);
+  return m ? m[1] : '';
+}
+
+function exportJournalAdif() {
+  const list = filterList();
+  if (!list.length) { showToast('! Aucun QSO à exporter pour ce filtre'); return; }
+  let adif = 'ADIF Export\n<ADIF_VER:5>3.1.4\n<PROGRAMID:12>HF-VHF-Logger\n<EOH>\n\n';
+  list.forEach(q => {
+    const raw = (q.datetime||'').replace('T','').replace(/-/g,'').replace(/:/g,'');
+    const dateStr = raw.slice(0,8) || '19700101';
+    const timeStr = raw.slice(8,12) || '0000';
+    const f = (tag, val) => val ? `<${tag}:${val.length}>${val} ` : '';
+    adif += f('CALL', q.call);
+    adif += f('QSO_DATE', dateStr);
+    adif += f('TIME_ON', timeStr);
+    adif += f('BAND', q.band);
+    adif += f('FREQ', q.freq);
+    adif += f('MODE', q.mode);
+    adif += f('RST_SENT', q.rst_sent);
+    adif += f('RST_RCVD', q.rst_rcvd);
+    adif += f('NAME', q.name);
+    adif += f('QTH', q.qth);
+    adif += f('COMMENT', q.comment);
+    adif += '<EOR>\n';
+  });
+  downloadTextFile(adif, 'journal_' + new Date().toISOString().slice(0,10) + '.adi');
+  showToast(list.length + ' QSO exportés → .adi');
+}
+
+function exportJournalEdi() {
+  const list = filterList();
+  if (!list.length) { showToast('! Aucun QSO à exporter pour ce filtre'); return; }
+
+  saveContestConfig(false);
+  const g = id => (document.getElementById(id).value || '').trim();
+  const myLoc = (g('cfg-pwwlo') || 'AA00AA').toUpperCase();
+  const myCoord = maidenheadToLatLon(myLoc);
+  if (!myCoord) { showToast('! Locator station invalide — renseignez-le dans l\'onglet Contest (Configuration Station)'); return; }
+
+  const bandTally = {};
+  list.forEach(q => { bandTally[q.band] = (bandTally[q.band]||0)+1; });
+  const mainBandEntry = Object.entries(bandTally).sort((a,b) => b[1]-a[1])[0];
+  const mainBand = mainBandEntry ? mainBandEntry[0] : '';
+  const pBand = PBAND_MAP[mainBand] || mainBand || '144 MHz';
+
+  const dates = list.map(q => (q.datetime||'').slice(0,10).replace(/-/g,'')).filter(d => d.length === 8);
+  const tDateStart = dates.length ? dates.reduce((a,b) => a < b ? a : b) : '';
+  const tDateEnd = dates.length ? dates.reduce((a,b) => a > b ? a : b) : '';
+
+  const seenSquares = new Set();
+  let totalPoints = 0;
+  let bestDx = null;
+
+  const qsoLines = list.map((q, idx) => {
+    const d = (q.datetime||'').slice(0,10).replace(/-/g,'').slice(2);
+    const t = (q.datetime||'').slice(11,16).replace(':','');
+    const loc = extractLocatorFromText(q.qth) || extractLocatorFromText(q.comment);
+    const coord = loc ? maidenheadToLatLon(loc) : null;
+    const dist = coord ? Math.round(calcDistance(myCoord.lat, myCoord.lon, coord.lat, coord.lon)) : 0;
+    totalPoints += dist;
+
+    let newWwl = '';
+    if (loc) {
+      const square = loc.slice(0,4);
+      if (square && !seenSquares.has(square)) { seenSquares.add(square); newWwl = 'N'; }
+    }
+    if (coord && (!bestDx || dist > bestDx.dist)) bestDx = { call: q.call, loc, dist };
+
+    const modeCode = CONTEST_MODE_CODE[(q.mode||'').toUpperCase()] || '1';
+    const sentExtracted = extractSerialFromComment(q.comment, 'S/N');
+    const rcvdExtracted = extractSerialFromComment(q.comment, 'R/N');
+    const sent = (sentExtracted || String(idx+1)).padStart(3,'0');
+    const rcvd = rcvdExtracted ? rcvdExtracted.padStart(3,'0') : '';
+
+    return `${d};${t};${q.call};${modeCode};${q.rst_sent||'59'};${sent};${q.rst_rcvd||'59'};${rcvd};;${loc};${dist};;${newWwl};;`;
+  });
+
+  const wwlCount = seenSquares.size;
+  const totalScore = totalPoints * (wwlCount || 1);
+
+  const header = [
+    '[REG1TEST;1]',
+    `TName=${g('cfg-tname')}`,
+    `TDate=${tDateStart};${tDateEnd}`,
+    `PCall=${g('cfg-pcall').toUpperCase()}`,
+    `PWWLo=${myLoc}`,
+    `PExch=`,
+    `PAdr1=${g('cfg-padr1')}`,
+    `PAdr2=${g('cfg-padr2')}`,
+    `PSect=${g('cfg-psect') || 'SINGLE'}`,
+    `PBand=${pBand}`,
+    `PClub=${g('cfg-pclub')}`,
+    `RName=${g('cfg-rname')}`,
+    `RCall=${g('cfg-pcall').toUpperCase()}`,
+    `RAdr1=${g('cfg-padr1')}`,
+    `RAdr2=`,
+    `RPoCo=${g('cfg-rpoco')}`,
+    `RCity=${g('cfg-rcity')}`,
+    `RCoun=${g('cfg-rcoun') || 'FRANCE'}`,
+    `RPhon=${g('cfg-rphon')}`,
+    `RHBBS= ${g('cfg-rhbbs')}`,
+    `MOpe1=`,
+    `STXEq=${g('cfg-stxeq')}`,
+    `SPowe=${g('cfg-spowe')}`,
+    `SRXEq=${g('cfg-srxeq')}`,
+    `SAnte=${g('cfg-sante')}`,
+    `SAntH=${g('cfg-santh1')};${g('cfg-santh2')}`,
+    `CQSOs=${list.length};1`,
+    `CQSOP=${totalPoints}`,
+    `CWWLs=${wwlCount};0;1`,
+    `CWWLB=`,
+    `CExcs=`,
+    `CExcB=`,
+    `CDXCs=`,
+    `CDXCB=`,
+    `CToSc=${totalScore}`,
+    `CODXC=${bestDx ? bestDx.call + ';' + bestDx.loc + ';' + bestDx.dist : ''}`,
+    '[Remarks]',
+    'Généré par HF/VHF Logger — export Journal',
+    `[QSORecords;${list.length}]`
+  ].join('\r\n');
+
+  const edi = header + '\r\n' + qsoLines.join('\r\n') + '\r\n';
+  downloadTextFile(edi, 'journal_' + new Date().toISOString().slice(0,10) + '.edi');
+  showToast(list.length + ' QSO exportés → .edi (locator manquant = distance 0)');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+// --- IMPORT MODULE (ADIF / EDI) ---
+const CONTEST_MODE_LABEL = { '1':'USB', '2':'CW', '5':'AM', '6':'FM' };
+const CONTEST_MODE_CODE = { 'USB':'1', 'SSB':'1', 'LSB':'1', 'CW':'2', 'AM':'5', 'FM':'6' };
+const LOG_BAND_TO_CONTEST = { '6m':'144MHz', '2m':'144MHz', '70cm':'432MHz', '23cm':'1.3GHz', '144mhz':'144MHz', '432mhz':'432MHz', '1.3ghz':'1.3GHz' };
+const REVERSE_PBAND_LOG = { '50 MHz':'6m', '144 MHz':'2m', '432 MHz':'70cm', '1,3 GHz':'23cm' };
+const REVERSE_PBAND_CONTEST = { '50 MHz':'144MHz', '144 MHz':'144MHz', '432 MHz':'432MHz', '1,3 GHz':'1.3GHz' };
+
+let pendingImport = null;
+
+function handleFileSelect(evt, target) {
+  const file = evt.target.files[0];
+  if (file) readImportFile(file, target);
+}
+
+function handleDrop(evt, target) {
+  evt.preventDefault();
+  evt.currentTarget.classList.remove('drag');
+  const file = evt.dataTransfer.files && evt.dataTransfer.files[0];
+  if (file) readImportFile(file, target);
+}
+
+function readImportFile(file, target) {
+  const reader = new FileReader();
+  reader.onload = e => processImportText(e.target.result, file.name, target);
+  reader.onerror = () => showToast('! Erreur de lecture du fichier');
+  reader.readAsText(file);
+}
+
+function detectFormat(text, filename) {
+  const lower = (filename || '').toLowerCase();
+  if (lower.endsWith('.edi')) return 'edi';
+  if (lower.endsWith('.adi') || lower.endsWith('.adif')) return 'adif';
+  if (/\[REG1TEST/i.test(text) || /\[QSORecords/i.test(text)) return 'edi';
+  if (/<eoh>/i.test(text) || /<call:/i.test(text)) return 'adif';
+  return null;
+}
+
+function parseAdifRecords(text) {
+  const records = [];
+  const parts = text.split(/<eor>/i);
+  parts.forEach(part => {
+    const fieldRegex = /<(\w+):(\d+)(?::[A-Za-z]+)?>/gi;
+    let match, found = false;
+    const fields = {};
+    while ((match = fieldRegex.exec(part)) !== null) {
+      found = true;
+      const tag = match[1].toUpperCase();
+      const len = parseInt(match[2], 10);
+      const start = match.index + match[0].length;
+      fields[tag] = part.substr(start, len).trim();
+    }
+    if (found && fields.CALL) records.push(fields);
+  });
+  return records;
+}
+
+function parseEdiRecords(text) {
+  const lines = text.split(/\r?\n/);
+  let band = '';
+  let inQso = false;
+  const records = [];
+  for (const line of lines) {
+    if (/^\[QSORecords/i.test(line)) { inQso = true; continue; }
+    if (/^PBand\s*=/i.test(line)) { band = line.split('=')[1].trim(); continue; }
+    if (!inQso) continue;
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith('[')) break;
+    const p = trimmed.split(';');
+    if (p.length < 8 || !p[2]) continue;
+    records.push({
+      dateRaw: p[0], timeRaw: p[1], call: p[2], mode: p[3],
+      rstSent: p[4], nrSent: p[5], rstRcvd: p[6], nrRcvd: p[7],
+      locRcvd: p[9] || ''
+    });
+  }
+  return { records, band };
+}
+
+function ediDateTime(dateRaw, timeRaw) {
+  dateRaw = (dateRaw || '').trim();
+  timeRaw = (timeRaw || '').trim().padEnd(4, '0');
+  if (dateRaw.length !== 6) return nowUtc();
+  const yy = dateRaw.slice(0, 2);
+  const year = (parseInt(yy, 10) < 70 ? '20' : '19') + yy;
+  const mm = dateRaw.slice(2, 4), dd = dateRaw.slice(4, 6);
+  const hh = timeRaw.slice(0, 2), mi = timeRaw.slice(2, 4);
+  return `${year}-${mm}-${dd}T${hh}:${mi}`;
+}
+
+function adifFieldsToLogQso(fields, i, baseId) {
+  const call = (fields.CALL || '').toUpperCase();
+  if (!call) return null;
+  const dateStr = fields.QSO_DATE || '';
+  const timeStr = (fields.TIME_ON || fields.TIME_OFF || '0000').padEnd(4, '0');
+  const datetime = dateStr.length === 8
+    ? `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}T${timeStr.slice(0,2)}:${timeStr.slice(2,4)}`
+    : nowUtc();
+  return {
+    id: baseId + i * 10,
+    call,
+    datetime,
+    band: (fields.BAND || '').toLowerCase(),
+    freq: fields.FREQ || '',
+    mode: (fields.MODE || '').toUpperCase(),
+    rst_sent: fields.RST_SENT || '59',
+    rst_rcvd: fields.RST_RCVD || '59',
+    name: fields.NAME || '',
+    qth: fields.QTH || fields.GRIDSQUARE || '',
+    comment: fields.COMMENT || fields.NOTES || ''
+  };
+}
+
+function adifFieldsToContestQso(fields, i, baseId) {
+  const call = (fields.CALL || '').toUpperCase();
+  if (!call) return null;
+  const dateStr = fields.QSO_DATE || '';
+  const timeStr = (fields.TIME_ON || '0000').padEnd(4, '0');
+  const datetime = dateStr.length === 8
+    ? `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}T${timeStr.slice(0,2)}:${timeStr.slice(2,4)}`
+    : nowUtc();
+  const modeCode = CONTEST_MODE_CODE[(fields.MODE || '').toUpperCase()] || '1';
+  const sent = fields.STX || fields.STX_STRING || String(i + 1);
+  const rcvd = fields.SRX || fields.SRX_STRING || '';
+  const band = LOG_BAND_TO_CONTEST[(fields.BAND || '').toLowerCase()] || '144MHz';
+  return {
+    id: baseId + i * 10,
+    datetime, band, mode: modeCode, call,
+    sent: String(sent).padStart(3, '0'),
+    rcvd: rcvd ? String(rcvd).padStart(3, '0') : '',
+    loc: (fields.GRIDSQUARE || '').toUpperCase(),
+    sentRst: fields.RST_SENT || '59',
+    rcvdRst: fields.RST_RCVD || '59'
+  };
+}
+
+function ediRecordToLogQso(r, i, baseId, bandLabel) {
+  const call = (r.call || '').toUpperCase();
+  if (!call) return null;
+  const bandKey = REVERSE_PBAND_LOG[bandLabel] || '2m';
+  const modeLabel = CONTEST_MODE_LABEL[r.mode] || 'USB';
+  return {
+    id: baseId + i * 10,
+    call,
+    datetime: ediDateTime(r.dateRaw, r.timeRaw),
+    band: bandKey,
+    freq: DEFAULT_FREQS[bandKey] || '',
+    mode: modeLabel,
+    rst_sent: r.rstSent || '59',
+    rst_rcvd: r.rstRcvd || '59',
+    name: '',
+    qth: (r.locRcvd || '').toUpperCase(),
+    comment: 'Import EDI — S/N ' + (r.nrSent || '') + ' / R/N ' + (r.nrRcvd || '')
+  };
+}
+
+function ediRecordToContestQso(r, i, baseId, bandLabel) {
+  const call = (r.call || '').toUpperCase();
+  if (!call) return null;
+  const bandKey = REVERSE_PBAND_CONTEST[bandLabel] || '144MHz';
+  return {
+    id: baseId + i * 10,
+    datetime: ediDateTime(r.dateRaw, r.timeRaw),
+    band: bandKey,
+    mode: r.mode || '1',
+    call,
+    sent: (r.nrSent || '').padStart(3, '0'),
+    rcvd: (r.nrRcvd || '').padStart(3, '0'),
+    loc: (r.locRcvd || '').toUpperCase(),
+    sentRst: r.rstSent || '59',
+    rcvdRst: r.rstRcvd || '59'
+  };
+}
+
+function processImportText(text, filename, target) {
+  const statusEl = document.getElementById('import-status-' + target);
+  const previewEl = document.getElementById('import-preview-' + target);
+  const format = detectFormat(text, filename);
+
+  if (!format) {
+    statusEl.innerHTML = '<span style="color:var(--danger)">✕ Format non reconnu (fichier .adi/.adif ou .edi attendu)</span>';
+    previewEl.innerHTML = '';
+    pendingImport = null;
+    return;
+  }
+
+  let records = [];
+  let ediBand = '';
+  if (format === 'adif') {
+    records = parseAdifRecords(text).map(f => ({ raw: f }));
+  } else {
+    const parsed = parseEdiRecords(text);
+    ediBand = parsed.band;
+    records = parsed.records.map(r => ({ raw: r }));
+  }
+
+  if (!records.length) {
+    statusEl.innerHTML = '<span style="color:var(--warn)">⚠ Aucun QSO trouvé dans ce fichier</span>';
+    previewEl.innerHTML = '';
+    pendingImport = null;
+    return;
+  }
+
+  pendingImport = { target, format, records, ediBand, baseId: Date.now() };
+
+  const sampleCalls = records.slice(0, 8).map(r => (format === 'adif' ? r.raw.CALL : r.raw.call) || '?').join(', ');
+  statusEl.innerHTML = `<span style="color:var(--success)">✓ ${records.length} QSO détectés (${format.toUpperCase()}) dans « ${filename} »</span>`;
+  previewEl.innerHTML = `
+    <div style="font-size:12px;color:var(--text2);margin:8px 0;">Aperçu : ${sampleCalls}${records.length > 8 ? '…' : ''}</div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="confirmImport()">＋ Importer ${records.length} QSO</button>
+      <button class="btn btn-danger" onclick="cancelImport('${target}')">✕ Annuler</button>
+    </div>`;
+}
+
+function cancelImport(target) {
+  pendingImport = null;
+  const statusEl = document.getElementById('import-status-' + target);
+  const previewEl = document.getElementById('import-preview-' + target);
+  if (statusEl) statusEl.innerHTML = '';
+  if (previewEl) previewEl.innerHTML = '';
+  const fileEl = document.getElementById('file-' + target);
+  if (fileEl) fileEl.value = '';
+}
+
+function confirmImport() {
+  if (!pendingImport) return;
+  const { target, format, records, ediBand, baseId } = pendingImport;
+  let added = 0;
+
+  if (target === 'log') {
+    records.forEach((r, i) => {
+      const q = format === 'adif'
+        ? adifFieldsToLogQso(r.raw, i, baseId)
+        : ediRecordToLogQso(r.raw, i, baseId, ediBand);
+      if (q) { qsos.unshift(q); added++; }
+    });
+  } else {
+    records.forEach((r, i) => {
+      const cq = format === 'adif'
+        ? adifFieldsToContestQso(r.raw, i, baseId)
+        : ediRecordToContestQso(r.raw, i, baseId, ediBand);
+      if (cq) {
+        contestQsos.push(cq);
+        added++;
+        const modeLabel = CONTEST_MODE_LABEL[cq.mode] || 'USB';
+        qsos.unshift({
+          id: cq.id + 1,
+          call: cq.call,
+          datetime: cq.datetime,
+          band: cq.band,
+          freq: DEFAULT_FREQS[cq.band] || '',
+          mode: modeLabel,
+          rst_sent: cq.sentRst || '59',
+          rst_rcvd: cq.rcvdRst || '59',
+          name: '',
+          qth: cq.loc,
+          comment: 'Import contest — S/N ' + cq.sent + ' / R/N ' + cq.rcvd
+        });
+      }
+    });
+    updateContestSerial();
+  }
+
+  save();
+  renderAll();
+  showToast(added + ' QSO importés ✓');
+  cancelImport(target);
+}
+
+load(); renderAll();
+</script>
+</body>
+</html>
