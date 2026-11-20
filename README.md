@@ -9,3 +9,6 @@ Journal — liste, filtres, recherche, export ADIF/EDI
 Stats — totaux et répartitions (bande, mode)
 Azimut & Beam — calcul azimut/distance entre locators
 Contest — saisie concours, score en temps réel, export EDI (REG1TEST) + import/export
+Notes : Cette application est à ouvrir avec le même navigateur pour ne pas perdre les données préenregistrées.
+Ce logger HTML peut être amélioré au gré de chacun.
+73
